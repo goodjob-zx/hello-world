@@ -5,16 +5,25 @@ import wordcloud
 from scipy.misc import imread
 
 name = input('Enter the name:')
-f = open('good_words.txt', 'r', encoding = 'utf-8')
+jieba.add_word(name)
+f = open('good_words2.txt', 'r', encoding = 'utf-8')
 t = f.read()
 f.close()
 t = t.replace(' ', '')
 t = t.replace('、', '')
 t = t.replace('\n', '')
+t = t.replace(',', '')
+t = t.replace('，', '')
+t = t.replace(chr(12288), '')
 t = t.replace('姓名', name)
 wlist = jieba.lcut(t)
-mask = imread('like.png')
-c = wordcloud.WordCloud(width=800, height=800, background_color='white', font_path='msyh.ttc', mask=mask)
+mask = imread('heart.png')
+c = wordcloud.WordCloud(width=1200,
+        height=1200,
+        background_color='white',
+        font_path='msyh.ttc',
+        mask=mask,
+        colormap='rainbow')
 txt = ' '.join(wlist)
 c.generate(txt)
 c.to_file('test.png')

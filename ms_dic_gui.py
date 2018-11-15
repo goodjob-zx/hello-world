@@ -8,18 +8,27 @@ class UI(Tk):
         Tk.__init__(self, *args, **kwargs)
         self.title('梁子轩的小词典')
         screen_width, screen_height = self.getScreen()
-        self.geometry('%dx%d+%d+%d' % (0.6 * screen_width, 0.8 * screen_height, 0.4 * screen_width, 0))
+        window_width = 0.6 * screen_width
+        window_height = 0.8 * screen_height
+        self.geometry('%dx%d+%d+%d' % (window_width, window_height, 0.4 * screen_width, 0))
         
-        self.en = Entry(self, font = 'Arial 18', bd = 0, width = 48)
-        self.en.grid(row = 0, column = 0)
+        
+        self.en = Entry(self, font = 'Arial 18', bd = 0, width = 100)
+        self.en.place(bordermode=OUTSIDE,
+                      width = 0.85 * window_width,
+                      height = 0.07 * window_height,
+                      x = 0.01 * window_width,
+                      y = 0.01 * window_height)
         self.en.bind('<Return>', self.Search_word)
-        
         bu = Button(self, text = 'Search', command = self.Search_word, font = 'Arial 18')
-        bu.grid(row = 0, column = 1) 
+        bu.place(bordermode=OUTSIDE,
+                 width = 0.12 * window_width,
+                 height = 0.07 * window_height,
+                 x = 0.87 * window_width,
+                 y = 0.01 * window_height) 
         
-        self.text = Text(self, height = 28, width = 75, font = 'msyh 12', state = DISABLED, relief = FLAT)
-        self.text.grid(row = 1, columnspan = 2)
-        
+        self.text = Text(self, height = 28, width = 75, font = 'msyh 14', state = DISABLED, relief = FLAT)
+        self.text.place(width = 0.98 * window_width, height = 0.9 * window_height, x = 0.01 * window_width, y = 0.09 * window_height)
     def getScreen(self):
         return self.winfo_screenwidth(), self.winfo_screenheight()
     def Search_word(self, ev = None):
@@ -50,7 +59,7 @@ class UI(Tk):
         self.InsertText(word + '\n' + result)
         self.text.config(state = DISABLED)
         self.text.tag_add("word", "1.0", '1.%d' % len(word))
-        self.text.tag_config('word', font = 'msyh 16 bold')
+        self.text.tag_config('word', font = 'msyh 18 bold')
         self.en.delete(0, END)
     def InsertText(self, mes):
         self.text.config(state = NORMAL)
@@ -78,14 +87,12 @@ class Parse():
         except:
             return -2
         return self.result      
-    
     def getHTML(self):
         kv = {'user-agent':'Mozilla/5.0'}
         para = {'q':self.word, 'go':'Search','qs':'ds', 'form':'Z9LH5'}
         r = requests.get('https://cn.bing.com/dict/search', para, headers = kv)
         r.raise_for_status()
         return r.text
-        
     def parsePage(self):
         demo = self.text
         result = ''

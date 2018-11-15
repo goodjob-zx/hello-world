@@ -1,12 +1,13 @@
-from tkinter import *
+import os
 import requests
 import webbrowser
+from tkinter import *
 from bs4 import BeautifulSoup
 
 class UI(Tk):
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
-        self.title('梁子轩的小词典')
+        self.title('Dictionary')
         screen_width, screen_height = self.getScreen()
         window_width = 0.6 * screen_width
         window_height = 0.8 * screen_height
@@ -14,20 +15,12 @@ class UI(Tk):
         
         
         self.en = Entry(self, font = 'Arial 18', bd = 0, width = 100)
-        self.en.place(bordermode=OUTSIDE,
-                      width = 0.85 * window_width,
-                      height = 0.07 * window_height,
-                      x = 0.01 * window_width,
-                      y = 0.01 * window_height)
+        self.en.place(bordermode=OUTSIDE, width = 0.85 * window_width, height = 0.07 * window_height, x = 0.01 * window_width, y = 0)
         self.en.bind('<Return>', self.Search_word)
         bu = Button(self, text = 'Search', command = self.Search_word, font = 'Arial 18')
-        bu.place(bordermode=OUTSIDE,
-                 width = 0.12 * window_width,
-                 height = 0.07 * window_height,
-                 x = 0.87 * window_width,
-                 y = 0.01 * window_height) 
+        bu.place(bordermode=OUTSIDE, width = 0.12 * window_width, height = 0.07 * window_height, x = 0.87 * window_width, y = 0) 
         
-        self.text = Text(self, height = 28, width = 75, font = 'msyh 14', state = DISABLED, relief = FLAT)
+        self.text = Text(self, height = 28, width = 75, font = 'msyh 13', state = DISABLED, relief = FLAT)
         self.text.place(width = 0.98 * window_width, height = 0.9 * window_height, x = 0.01 * window_width, y = 0.09 * window_height)
     def getScreen(self):
         return self.winfo_screenwidth(), self.winfo_screenheight()
@@ -44,8 +37,8 @@ class UI(Tk):
             self.InsertText(mes1)
             return
         if result == -2:
-            url = 'https://cn.bing.com/dict/search?q=' + self.en.get() + '&go=Search&qs=ds&form=Z9LH5'
-            self.InsertText(mes2 + '\n' + url)
+            self.url = 'https://cn.bing.com/dict/search?q=' + self.en.get() + '&go=Search&qs=ds&form=Z9LH5'
+            self.InsertText(mes2 + '\n' + self.url)
             self.text.tag_add('err_mes', '2.0', END)
             self.text.tag_config('err_mes',foreground='blue',underline=True)
             self.text.tag_bind('err_mes','<Enter>', self.show_hand_cursor)
@@ -59,15 +52,20 @@ class UI(Tk):
         self.InsertText(word + '\n' + result)
         self.text.config(state = DISABLED)
         self.text.tag_add("word", "1.0", '1.%d' % len(word))
-        self.text.tag_config('word', font = 'msyh 18 bold')
+        self.text.tag_config('word', font = 'msyh 16 bold')
+        self.Record()
         self.en.delete(0, END)
     def InsertText(self, mes):
         self.text.config(state = NORMAL)
         self.text.delete(1.0, END)
         self.text.insert(1.0, mes)
         self.text.config(state = DISABLED)
+    def Record(self):
+        record = open('test.txt', 'a')
+        record.write(self.en.get() + '\n')
+        record.close()
     def click(self, event):
-        webbrowser.open('http://baidu.com')
+        webbrowser.open(self.url)
     def show_hand_cursor(self, event):
         self.text.config(cursor='arrow')
     def show_arrow_cursor(self, event):
@@ -125,4 +123,5 @@ class Parse():
         return result
 
 root = UI()
+os.chdir('/home/lzx/Study/English')
 root.mainloop()

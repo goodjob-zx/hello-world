@@ -1,4 +1,3 @@
-import os
 import requests
 import webbrowser
 from tkinter import *
@@ -53,17 +52,12 @@ class UI(Tk):
         self.text.config(state = DISABLED)
         self.text.tag_add("word", "1.0", '1.%d' % len(word))
         self.text.tag_config('word', font = 'msyh 16 bold')
-        self.Record()
         self.en.delete(0, END)
     def InsertText(self, mes):
         self.text.config(state = NORMAL)
         self.text.delete(1.0, END)
         self.text.insert(1.0, mes)
         self.text.config(state = DISABLED)
-    def Record(self):
-        record = open('test.txt', 'a')
-        record.write(self.en.get() + '\n')
-        record.close()
     def click(self, event):
         webbrowser.open(self.url)
     def show_hand_cursor(self, event):
@@ -123,5 +117,4 @@ class Parse():
         return result
 
 root = UI()
-os.chdir('/home/lzx/Study/English')
 root.mainloop()

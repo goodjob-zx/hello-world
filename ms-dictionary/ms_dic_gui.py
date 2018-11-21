@@ -1,3 +1,10 @@
+#A dictionary based on the searching pages of Bing dic
+#Get the searching HTML page with requests
+#parse with BeautifulSoup
+#show in GUI(tkinter)
+#Next: add right-click menu into GUI
+#梁子轩，2018.11.21
+
 import requests
 import webbrowser
 from tkinter import *
@@ -16,6 +23,7 @@ class UI(Tk):
         po_x = (screen_width - window_width) / 2
         po_y = (screen_height - window_height) / 2
         self.geometry('%dx%d+%d+%d' % (window_width, window_height, po_x, po_y))
+        self.bind('<Configure>', self.Resize)
         
         self.en = Entry(self, font = 'calibri 18', bd = 0, width = 100)
         self.en.place(bordermode=OUTSIDE,
@@ -24,8 +32,9 @@ class UI(Tk):
                       x = 0.01 * window_width,
                       y = 0.01 * window_height)
         self.en.bind('<Return>', self.Search_word)
-        bu = Button(self, text = 'Search', command = self.Search_word, font = 'calibri 20')
-        bu.place(bordermode=OUTSIDE,
+        self.bu = Button(self, text = 'Search', command = self.Search_word, font = 'calibri 20')
+        self.bu_width = 0.12 * window_width
+        self.bu.place(bordermode=OUTSIDE,
                  width = 0.12 * window_width,
                  height = 0.06 * window_height,
                  x = 0.87 * window_width,
@@ -43,6 +52,21 @@ class UI(Tk):
         
     def getScreen(self):
         return self.winfo_screenwidth(), self.winfo_screenheight()
+    def Resize(self, event):
+        window_height = self.winfo_height()
+        window_width = self.winfo_width()
+        self.en.place(width = 0.97 * window_width - self.bu_width,
+                      height = 0.06 * window_height,
+                      x = 0.01 * window_width,
+                      y = 0.01 * window_height)
+        self.bu.place(width = self.bu_width,
+                      height = 0.06 * window_height,
+                      x = 0.99 * window_width - self.bu_width,
+                      y = 0.01 * window_height)
+        self.text.place(width = 0.98 * window_width,
+                        height = 0.9 * window_height,
+                        x = 0.01 * window_width,
+                        y = 0.08 * window_height)
     def Search_word(self, ev = None):
         p = Parse()
         if self.en.get() == '':
@@ -73,6 +97,7 @@ class UI(Tk):
         else:
             self.InsertText(word + '\n'+ self.result[0])
             self.text.config(state = NORMAL)
+#Only show the ch-en meaning, hide others into 'more' tag
             self.text.insert(INSERT, 'more')
             self.text.config(state = DISABLED)
             self.text.tag_add('more', 'end-5c', 'end')
@@ -140,10 +165,12 @@ class Parse():
         try:
             self.getHTML()
         except:
+            #network error
             return -1
         try:
             self.parsePage()
         except:
+            #error in parsing pages, I don't like it
             return -2
         return self.result
     def getHTML(self):
@@ -153,6 +180,11 @@ class Parse():
         self.text = r.text
     def parsePage(self):
         result = ['', '', '', '']
+#first: ch&en or translate from ch to en
+#second: en
+#third: ch
+#last: the word, sometimes the searching word is not the word entered
+#this is necessary
         self.soup = BeautifulSoup(self.text, 'html.parser')
         result[-1] = self.soup.find('strong').string
         if u'\u4e00' <= self.word[0] <= u'\u9fff':
@@ -225,6 +257,6 @@ class Parse():
                         result += i.find('span', 'p1-1').string + '\n'
             result += '\n'
         return result
-    
-root = UI()
-root.mainloop()
+if __name__ == '__main__':
+    root = UI()
+    root.mainloop()

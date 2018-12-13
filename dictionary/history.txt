@@ -1,0 +1,5 @@
+love
+new
+crazy
+about
+exit

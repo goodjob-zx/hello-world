@@ -1,34 +1,52 @@
-#A dictionary based on the searching pages of Bing dic
-#Get the searching HTML page with requests
-#parse with BeautifulSoup
-#show in GUI(tkinter)
-#Next: add right-click menu into GUI
-#梁子轩，2018.11.21
-
-import requests
+from Parse import *
 import webbrowser
 from tkinter import *
-from bs4 import BeautifulSoup
+from tkinter import ttk
+from tkinter.scrolledtext import ScrolledText
+from functools import partial
 
 class UI(Tk):
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
         self.title('Dictionary')
+
+        try:
+            tmp = open('config.dat', 'r')
+            self.window_width = eval(tmp.readline().replace('\n', ''))
+            self.window_height = eval(tmp.readline().replace('\n', ''))
+            po_x = eval(tmp.readline().replace('\n', ''))
+            po_y = eval(tmp.readline().replace('\n', ''))
+            self.root_bg = tmp.readline().replace('\n', '')
+            self.widget_bg = tmp.readline().replace('\n', '')
+            self.widget_fg = tmp.readline().replace('\n', '')
+            if self.root_bg == '#f0f0f0':
+                self.theme = 0
+            else:
+                self.theme = 1
+            tmp.close()
+        except:
+            tmp = open('config.dat', 'w')
+            screen_width, screen_height = self.getScreen()
+            self.window_width = 0.6 * screen_width
+            self.window_height = 0.8 * screen_height
+            po_x = screen_width - self.window_width
+            po_y = 0
+            self.root_bg = '#f0f0f0'
+            self.widget_bg = 'white'
+            self.widget_fg = 'black'
+            for item in [str(self.window_width), str(self.window_height), str(po_x),
+                         str(po_y), '#f0f0f0', 'white', 'black']:
+                tmp.write(item)
+                tmp.write('\n')
+            self.theme = 0
+            tmp.close()
         
-        self.rclick = RightClick(self)
-        self.bind('<Button-3>', self.rclick.popup)
-        self.bind('<Button-1>', self.rclick.unpop)
-        self.clipboard_clear()
-        
-        screen_width, screen_height = self.getScreen()
-        self.window_width = 0.6 * screen_width
-        self.window_height = 0.8 * screen_height
-        po_x = (screen_width - self.window_width) / 2
-        po_y = (screen_height - self.window_height) / 2
+        self.config(bg = self.root_bg)
         self.geometry('%dx%d+%d+%d' % (self.window_width, self.window_height, po_x, po_y))
         self.bind('<Configure>', self.Resize)
         
-        self.en = Entry(self, font = '微软雅黑 18', bd = 0, width = 100)
+        self.en = Entry(self, bg = self.widget_bg, fg = self.widget_fg,
+                        font = 'calibri 18', bd = 0, width = 100, insertbackground = self.widget_fg)
         self.en.place(bordermode=OUTSIDE,
                       width = 0.85 * self.window_width,
                       height = 0.06 * self.window_height,
@@ -36,7 +54,9 @@ class UI(Tk):
                       y = 0.01 * self.window_height)
         self.en.bind('<Return>', self.Search_word)
         self.en.focus_set()
-        self.bu = Button(self, text = 'Search', command = self.Search_word, font = 'calibri 20')
+        self.bu = Button(self, text = '搜 索', command = self.Search_word, font = '宋体 18 bold',
+                         bg = self.root_bg, fg = self.widget_fg, activebackground = self.widget_bg,
+                         activeforeground = self.widget_fg)
         self.bu_width = 0.12 * self.window_width
         self.bu.place(bordermode=OUTSIDE,
                  width = 0.12 * self.window_width,
@@ -44,19 +64,33 @@ class UI(Tk):
                  x = 0.87 * self.window_width,
                  y = 0.01 * self.window_height) 
         
-        self.text = Text(self, height = 28, width = 75, font = '微软雅黑 14', relief = FLAT)
+        self.text = ScrolledText(self, height = 28, width = 75, font = '微软雅黑 14',
+                                 bg = self.widget_bg, fg = self.widget_fg, relief = FLAT)
         self.text.place(width = 0.98 * self.window_width,
                         height = 0.9 * self.window_height,
                         x = 0.01 * self.window_width,
                         y = 0.08 * self.window_height)
+        self.text.insert(1.0, '欢迎，右键查看更多。')
+        self.text.tag_add('wel', 1.0, END)
+        self.text.tag_config('wel', font = '微软雅黑 24')
         self.text.config(state = DISABLED)
-        self.icon_f = PhotoImage(file='arrow1.png')
-        self.icon_b = PhotoImage(file='arrow2.png')
+        self.icon_f = PhotoImage(file='icons/arrow1.png')
+        self.icon_b = PhotoImage(file='icons/arrow2.png')
+        try:
+            tmp = open('history.txt', 'r')
+            tmp.close()
+        except:
+            tmp = open('history.txt', 'w')
+            tmp.close()
         self.memory = WordMemory()
+        self.rclick = RightClick(self)
+        self.bind('<Button-3>', self.rclick.popup)
+        self.bind('<Button-1>', self.rclick.unpop)
         
     def getScreen(self):
         return self.winfo_screenwidth(), self.winfo_screenheight()
     def Resize(self, event):
+        self.conf_flag = 1
         self.window_height = self.winfo_height()
         self.window_width = self.winfo_width()
         self.en.place(width = 0.97 * self.window_width - self.bu_width,
@@ -93,12 +127,26 @@ class UI(Tk):
             return
         word = word.strip(' ')
         word = word.replace(' ', '+')
+        if word in ['梁子轩', 'lzx', 'LZX', 'Liang Zixuan', 'Zixuan', 'zixuan',
+                    'Michael Liang']:
+            self.InsertText('这个程序的作者\nThe Author')
+            return
         self.result = p.get(word)
         self.ReloadUI()
+        if self.conf_flag:
+            tmp = open('config.dat', 'w')
+            for item in [str(self.winfo_width()), str(self.winfo_height()),
+                        str(self.winfo_rootx()), str(self.winfo_rooty()),
+                        self.root_bg, self.widget_bg, self.widget_fg]:
+                tmp.write(item)
+                tmp.write('\n')
+            tmp.close()
+            self.conf_flag = 0
+            tmp.close()
         return
     def ReloadUI(self):
-        mes1 = 'There is a connection error:('
-        mes2 = 'Sorry, the word cannot be found, you can check it here:'
+        mes1 = '网络似乎有些问题\nThere is a connection error:('
+        mes2 = '找不到输入内容的中英文释义，点击网址查看网络释义：'
         if self.result == -1:
             self.InsertText(mes1)
             return
@@ -120,9 +168,9 @@ class UI(Tk):
             self.InsertText(word + '\n' + self.result[-2] + self.result[0])
             self.text.config(state = NORMAL)
 #Only show the ch-en meaning, hide others into 'more' tag
-            self.text.insert(INSERT, 'more')
+            self.text.insert(INSERT, '更多')
             self.text.config(state = DISABLED)
-            self.text.tag_add('more', 'end-5c', 'end')
+            self.text.tag_add('more', 'end-3c', 'end')
             self.HyperText('more')
             self.text.tag_bind('more', '<Button-1>', self.More)
         self.text.tag_add("word", "1.0", '1.%d' % len(word))
@@ -133,6 +181,7 @@ class UI(Tk):
         self.en.delete(0, END)
         
         self.memory.add(word)
+        self.rclick.hMenu_Reset()
         self.ArrowIcon()
     
     def ArrowIcon(self):
@@ -206,6 +255,7 @@ class UI(Tk):
                 self.text.config(cursor='xterm')
             except:
                 pass
+    
     def Backward(self, event):
         p = Parse()
         self.result = p.get(self.memory.last_word())
@@ -216,8 +266,8 @@ class UI(Tk):
         self.ReloadUI()
     def More(self, event):
         self.text.config(state = NORMAL)
-        self.text.insert('end-5c', self.result[2] + self.result[1])
-        self.text.delete('end-5c', END)
+        self.text.insert('end-3c', self.result[2] + self.result[1])
+        self.text.delete('end-3c', END)
         self.text.config(state = DISABLED)
     def click(self, event):
         webbrowser.open(self.url)
@@ -225,28 +275,40 @@ class UI(Tk):
         self.text.config(cursor='hand2')
     def show_arrow_cursor(self, event):
         self.text.config(cursor='xterm')
-
-
+        
 class RightClick:
     def __init__(self, master):
         self.master = master
-        self.aMenu = Menu(master, tearoff = 0, font = 'calibri 16', cursor = 'left_ptr')
-        self.aMenu.add_command(label = 'Search', command = self.Search)
-        self.aMenu.add_command(label = 'Copy', command = self.Copy_to_clipboard)
-        self.aMenu.add_command(label = 'Paste', command = self.Paste_from_clipboard)
-        self.aMenu.add_command(label = 'History')
-        self.aMenu.add_command(label = 'Clear', command = self.Clear)
+        self.aMenu = Menu(master, tearoff = 0, font = '宋体 14', cursor = 'left_ptr',
+                          bg = self.master.root_bg, activebackground = self.master.root_bg,
+                          fg = self.master.widget_fg, activeforeground = self.master.widget_fg)
+        self.hMenu = Menu(self.aMenu, tearoff = 0, font = 'calibri 14', cursor = 'left_ptr',
+                          bg = self.master.root_bg, activebackground = self.master.root_bg,
+                          fg = self.master.widget_fg, activeforeground = self.master.widget_fg)
+        self.hMenu_Reset()
+        self.aMenu.add_command(label = '搜索所选内容', command = self.Search)
+        self.aMenu.add_command(label = '复制', command = self.Copy_to_clipboard)
+        self.aMenu.add_command(label = '粘贴', command = self.Paste_from_clipboard)
+        self.aMenu.add_cascade(label = '历史', menu = self.hMenu)
+        self.aMenu.add_command(label = '清屏', command = self.Clear)
+        self.aMenu.add_command(label = '更换皮肤', command = self.Color_change)
+        self.aMenu.add_command(label = '清空历史', command = self.Warn)
         self.aMenu.add_separator()
-        self.aMenu.add_command(label = 'About', command= self.About)
-    #0-Search   1-Copy    2-Paste    3-history     4-Clear    6-About
-    def Search(self):
-        try:
-            word = self.master.text.get(SEL_FIRST, SEL_LAST)
-        except:
+        self.aMenu.add_command(label = '关于', command= self.About)
+    def Search(self, word = ''):
+        if word == '':
+            try:
+                word = self.master.text.get(SEL_FIRST, SEL_LAST)
+            except:
+                return
+            self.master.en.delete(0, END)
+            self.master.en.insert(0, word)
+            self.master.Search_word()
             return
         self.master.en.delete(0, END)
         self.master.en.insert(0, word)
         self.master.Search_word()
+        return
     def Copy_to_clipboard(self):
         try:
             word = self.master.text.get(SEL_FIRST, SEL_LAST)
@@ -266,30 +328,146 @@ class RightClick:
         self.master.InsertText('')
         self.master.Hide_icon('f')
         self.master.Hide_icon('b')
+        return
+    def hMenu_Reset(self):
+        for i in range(0, 8):
+            try:
+                self.hMenu.delete(0)
+            except:
+                break
+        for word in self.master.memory.history:
+            if word != ' ':
+                self.hMenu.add_command(label = word, command = partial(self.Search, word))
+        self.hMenu.add_separator()
+        
+        self.hMenu.add_command(label = '更多', command = self.hShow)
+        return
+    def hShow(self):
+        tmp = open('history.txt', 'r')
+        words = tmp.readlines()
+        tmp.close()
+        show_mes = ''
+        for word in words:
+            if word in [' ', '']:
+                continue
+            show_mes += word + '\n'
+        self.master.InsertText('Searchng History\n\n' + show_mes)
+        self.master.text.tag_add('history', 1.0, 2.0)
+        self.master.text.tag_config('history', font = 'Arial 22')
     def About(self):
         x = self.master.winfo_rootx()
         y = self.master.winfo_rooty()
-        self.about = Toplevel()
-        self.about.title('About')
+        self.about = Toplevel(bg = self.master.root_bg)
+        self.about.title('关于')
+        self.about.wm_attributes('-topmost',1)
         self.about.geometry('%dx%d+%d+%d' % (560, 600, x, y))
-        icon = PhotoImage(file='menhera.png')
-        f = Frame(self.about)
+        icon = PhotoImage(file='icons/menhera.png')
+        f = Frame(self.about, bg = self.master.root_bg)
         gril = Label(f, image = icon)
         gril.image = icon
         gril.pack(side = LEFT, padx = 20, pady = 20)
-        name = Label(f, text = '梁子轩的\n小词典\n～～～', font = '楷体 28')
+        name = Label(f, text = '梁子轩的\n小词典\n～～～', font = '楷体 28', fg = self.master.widget_fg,
+                     bg = self.master.root_bg)
         name.pack(side = LEFT)
         f.pack(side = TOP, anchor = NW)
-        message = Text(self.about, height = 6, font = 'Times 14', relief = FLAT)
-        message.insert(1.0, 'Version: 1.0\nAuthor: Michael Liang(UESTC)\nReport Bug: ' + \
-            'zixuan.liang712@gmail.com\n2018.11\n')
-        message.config(state = DISABLED)
-        message.pack(side = TOP, anchor = W, padx = 20)
-        close_bu = Button(self.about, font = 'Calibri 14',
-                          text = 'Close', command = self.Close)
-        close_bu.pack(side = BOTTOM, anchor = SE, pady = 20, padx = 20)
+        
+        nb = ttk.Notebook(self.about)
+        ttk.Style().configure("TNotebook", background=self.master.root_bg)
+        ttk.Style().map("TNotebook.Tab", background=[("selected", self.master.widget_bg)],
+                        foreground=[("selected", self.master.widget_fg)])
+        ttk.Style().configure("TNotebook.Tab", font = 'Calibri 14',
+                              background = self.master.root_bg,
+                              foreground = self.master.widget_fg)
+        nb.pack(side = TOP, anchor = W, padx = 20)
+        page1 = Frame(nb, bg = self.master.root_bg)
+        message1 = Text(page1, height = 6, font = '微软雅黑 14', bg = self.master.widget_bg,
+                        fg = self.master.widget_fg, relief = FLAT)
+        message1.insert(1.0, '基于网络爬虫的词典小程序\n英汉、汉英均支持\n版本：1.2\n感谢使用')
+        message1.config(state = DISABLED)
+        message1.pack(side = TOP, anchor = W)
+        nb.add(page1, text = '关于')
+        
+        page2 = Frame(nb, bg = self.master.root_bg)
+        message2 = Text(page2, height = 6, font = 'Times 14', bg = self.master.widget_bg,
+                        fg = self.master.widget_fg, relief = FLAT)
+        message2.insert(1.0, 'Version: 1.2\nAuthor: Michael Liang(UESTC)\n' + \
+                        'Email: zixuan.liang712@gmail.com\nGive me feedback if you want.')
+        message2.config(state = DISABLED)
+        message2.pack(side = TOP, anchor = W)
+        nb.add(page2, text = 'About')
+
+        close_bu = Button(self.about, font = '宋体 12', bg = self.master.root_bg,
+                          fg = self.master.widget_fg, activebackground = self.master.widget_bg,
+                          activeforeground = self.master.widget_fg, text = '关闭',
+                          command = self.Close)
+        close_bu.pack(side = BOTTOM, anchor = SE, pady = 15, padx = 15)
+    def Color_change(self):
+        if self.master.theme == 0:
+            self.master.root_bg = '#262629'
+            self.master.widget_bg = '#31363b'
+            self.master.widget_fg = '#E0FFFF'
+            self.master.theme = 1
+        else:
+            self.master.root_bg = '#f0f0f0'
+            self.master.widget_bg = 'white'
+            self.master.widget_fg = 'black'
+            self.master.theme = 0
+        self.master.config(bg = self.master.root_bg)
+        self.master.en.config(bg = self.master.widget_bg, fg = self.master.widget_fg,
+                              insertbackground = self.master.widget_fg)
+        self.master.bu.config(bg = self.master.root_bg, fg = self.master.widget_fg,
+                              activebackground = self.master.widget_bg,
+                              activeforeground = self.master.widget_fg)
+        self.master.text.config(bg = self.master.widget_bg, fg = self.master.widget_fg)
+        self.aMenu.config(bg = self.master.root_bg, activebackground = self.master.root_bg,
+                          fg = self.master.widget_fg, activeforeground = self.master.widget_fg)
+        self.hMenu.config(bg = self.master.root_bg, activebackground = self.master.root_bg,
+                          fg = self.master.widget_fg, activeforeground = self.master.widget_fg)
+        tmp = open('config.dat', 'w')
+        for item in [str(self.master.winfo_width()), str(self.master.winfo_height()),
+                        str(self.master.winfo_rootx()), str(self.master.winfo_rooty()),
+                        self.master.root_bg, self.master.widget_bg, self.master.widget_fg]:
+            tmp.write(item)
+            tmp.write('\n')
+        tmp.close()    
+    def Warn(self):
+        self.warn = Toplevel(bg = self.master.root_bg)
+        self.warn.title('警告')
+        po_x = self.master.winfo_rootx() + self.master.winfo_width() / 2 - 240
+        po_y = self.master.winfo_rooty() + self.master.winfo_height() / 2 - 130
+        self.warn.geometry('%dx%d+%d+%d' % (480, 240, po_x, po_y))
+        mes = Label(self.warn, text = '\n该操作会清楚所有历史数据，\n是否继续?',
+                    font = 'Times 16', fg = self.master.widget_fg, bg = self.master.root_bg)
+        mes.pack(side = TOP)
+        f = Frame(self.warn, bg = self.master.root_bg)
+        bu_no = Button(f, font = ' Calibri 14', bg = self.master.root_bg,
+                       fg = self.master.widget_fg, activebackground = self.master.widget_bg,
+                       activeforeground = self.master.widget_fg, text = '否',
+                          command = self.Warn_no)
+        bu_yes = Button(f, font = ' Calibri 14', bg = self.master.root_bg,
+                        fg = self.master.widget_fg, activebackground = self.master.widget_bg,
+                        activeforeground = self.master.widget_fg, text = '是',
+                        command = self.Warn_yes)
+        bu_yes.pack(side = RIGHT, anchor = E, padx = 5)
+        bu_no.pack(side = RIGHT, anchor = E, padx = 30)
+        f.pack(side = TOP, anchor = SE, pady = 30)
     def Close(self):
         self.about.destroy()
+        return
+    def Warn_no(self):
+        self.warn.destroy()
+    def Warn_yes(self):
+        tmp = open('history.txt', 'w')
+        tmp.close()
+        self.master.memory.wordlist = []
+        self.master.memory.history = []
+        for i in range(0, 7):
+            self.master.memory.history.append(' ')
+        self.master.memory.pointer = 0
+        self.master.memory.current_pointer = 0
+        self.hMenu_Reset()
+        self.Clear()
+        self.warn.destroy()
     def popup(self, event):
         #in the region of entry
         if self.master.en.winfo_rootx() + 0.97 * self.master.window_width - self.master.bu_width > event.x_root\
@@ -331,14 +509,24 @@ class RightClick:
             return
     def unpop(self, event):
         self.aMenu.unpost()
-
+        return
+    
 class WordMemory():
     def __init__(self):
         self.wordlist = []
         self.pointer = 0
         self.current_pointer = 0
-        #
         self.max_word = 50
+        self.history = []
+        h = open('history.txt', 'r')
+        s = h.readlines()
+        h.close()
+        for i in range(0, 7):
+            try:
+                self.history.append(s[-1 - i])
+            except:
+                self.history.append(' ')
+            self.history[i] = self.history[i].rstrip('\n')
     def add(self, word):
         if word not in self.wordlist:
             self.wordlist.append(word)
@@ -347,6 +535,15 @@ class WordMemory():
                 self.current_pointer = self.pointer - 1
             else:
                 del self.wordlist[0]
+        for i in range(0, 7):
+            if self.history[i] == word:
+                del self.history[i]
+                self.history.insert(0, word)
+                break
+        else:
+            del self.history[-1]
+            self.history.insert(0, word)
+        self.his_add(word)
     def last_word(self):
         self.current_pointer -= 1
         return self.wordlist[self.current_pointer]
@@ -355,115 +552,18 @@ class WordMemory():
         return self.wordlist[self.current_pointer]
     def Num_of_words(self):
         return len(self.wordlist)
-
-class Parse():
-    def __init__(self):
-        pass
-    def get(self, word):
-        self.word = word
-        try:
-            self.getHTML()
-        except:
-            #network error
-            return -1
-        try:
-            self.parsePage()
-        except:
-            return -2
-        if self.result[0] == '' and self.result[1] == '' and self.result[2] == '':
-            return -2
-        return self.result
-    def getHTML(self):
-        kv = {'user-agent':'Mozilla/5.0'}
-        para = {'q':self.word, 'go':'Search','qs':'ds', 'form':'Z9LH5'}
-        r = requests.get('https://cn.bing.com/dict/search', para, headers = kv)
-        self.text = r.text
-    def parsePage(self):
-        result = ['', '', '', '', '']
-#first: ch&en or translate from ch to en
-#second: en
-#third: ch
-#last: the word, sometimes the searching word is not the word entered
-#this is necessary
-        self.soup = BeautifulSoup(self.text, 'html.parser')
-        result[-1] = self.soup.find('strong').string
-        if u'\u4e00' <= self.word[0] <= u'\u9fff':
-            result[1] = self.ch2en()
-            self.result = result
-            return
-        try:
-            result[-2] += (self.soup.find('div', 'hd_prUS').string + '    ')
-            result[-2] += (self.soup.find('div', 'hd_pr').string + '\n')
-        except:
-            pass
-        try:
-            result[0] += self.en2mix()
-        except:
-            pass
-        try:
-            result[1] += self.en2en()
-        except:
-            pass
-        try:
-            result[2] += self.en2ch()
-        except:
-            pass
-        self.result = result
-    def ch2en(self):
-        result = ''
-        seg = self.soup.find('div', {'id':'crossid'})
-        for tag in seg('tr','def_row df_div1'):
-            result += (tag.find('div', 'pos pos1').string + '\n')
-            for exp in tag('div', 'de_li1 de_li3'):
-                result += (exp.find('div', 'se_d').string + ' ')
-                for i in exp('a'):
-                    result += (i.string + ' ')
-                result += '\n'
-        return result
-    def en2mix(self):
-        result = ''
-        for seg in self.soup('div', 'each_seg'):
-            result += (seg.find('div', 'pos').string + '\n')
-            for tag in seg('div', 'se_lis'):
-                result += (tag.find('div', 'se_d').string + ' ')
-                for gra in tag('span', 'gra'):
-                    result += (gra.string + ' ')
-                for comple in tag('span', 'comple'):
-                    result += (comple.string + ' ')
-                for bv in tag('span'):
-                    if bv.attrs == {'class':['bil']} or bv.attrs == {'class':['val']}:
-                        result += bv.string + chr(12288)
-                    elif bv.attrs == {'class':['val', 'label']}:
-                        for label in bv.children:
-                            result += label.string
-                result += '\n'
-            result += '\n'
-        return result
-    def en2en(self):
-        result = ''
-        seg = self.soup.find('div', {'id':'homoid'})
-        for tag in seg('tr','def_row df_div1'):
-            result += (tag.find('div', 'pos pos1').string + '\n')
-            for exp in tag('div', 'def_fl'):
-                for i in exp.children:
-                    if i.attrs == {'class':['de_li1', 'de_li3']}:
-                        result += i.find('div', 'se_d').string + ' '
-                        for single_word in i('a'):
-                            result += (single_word.string + ' ')
-                    result += '\n'
-        result += '\n'
-        return result
-    def en2ch(self):
-        result = ''
-        seg = self.soup.find('div', {'id':'crossid'})
-        for tag in seg('tr','def_row df_div1'):
-            result += (tag.find('div', 'pos pos1').string + '\n')
-            for exp in tag('div', 'def_fl'):
-                for i in exp.children:
-                    if i.attrs == {'class':['de_li1', 'de_li3']}:
-                        result += i.find('div', 'se_d').string + ' '
-                        result += i.find('span', 'p1-1').string + '\n'
-            result += '\n'
-        return result
+    def his_add(self, word):
+        flag = 1
+        h = open('history.txt', 'a+')
+        h.seek(0)
+        for h_word in h.readlines():
+            if h_word == word + '\n':
+                flag = 0
+                break
+        if flag:
+            h.seek(2)
+            h.write(word + '\n')
+        h.close()
+        
 root = UI()
 root.mainloop()
